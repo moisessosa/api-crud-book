@@ -73,12 +73,17 @@ const book = async (req, res) => {
       .json({ message: "ocurrio un erro al subir el Libro", error: error });
   }
 };
-const getBookByTitle = async (req, res) => {
+const getBookResumeByTitle = async (req, res) => {
   const { title } = req.params;
-  const resultado = await pool.query(
-    "SELECT resumen from book where book_name = $1",
-    [title]
-  );
-  res.json(resultado.rows);
+  try {
+    const resultado = await pool.query(
+      "SELECT resumen from book where book_name = $1",
+      [title]
+    );
+    res.status(404).json(resultado.rows[0].resumen);
+  } catch (error) {
+    res.json({ message: `${error}` });
+  }
 };
-module.exports = { login, register, book, getBookByTitle };
+module.exports = { login, register, book, getBookResumeByTitle };
+//select * from information_schema.columns where table_name = 'nombre de la tabla';
