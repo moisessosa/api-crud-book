@@ -61,16 +61,22 @@ const register = async (req, res) => {
 };
 const book = async (req, res) => {
   const { book_name, genero, precio, resumen } = req.body;
-  try {
-    const insertar = pool.query(
-      "INSERT INTO book (book_name, genero, precio, resumen) values($1,$2,$3,$4)",
-      [book_name, genero, precio, resumen]
-    );
-    res.json({ message: "Libro subido exitosamente" });
-  } catch (error) {
+  if (book_name && genero && precio && resumen) {
+    try {
+      const insertar = pool.query(
+        "INSERT INTO book (book_name, genero, precio, resumen) values($1,$2,$3,$4)",
+        [book_name, genero, precio, resumen]
+      );
+      res.json({ message: "Libro subido exitosamente" });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: "ocurrio un erro al subir el Libro", error: error });
+    }
+  } else {
     res
-      .status(500)
-      .json({ message: "ocurrio un erro al subir el Libro", error: error });
+      .status(403)
+      .json({ message: "Datos incompleto o con formato incompleto" });
   }
 };
 const getBookResumeByTitle = async (req, res) => {
@@ -80,10 +86,19 @@ const getBookResumeByTitle = async (req, res) => {
       "SELECT resumen from book where book_name = $1",
       [title]
     );
-    res.status(404).json(resultado.rows[0].resumen);
+    //res.writeHead(200, { "Content-Type": "text/html" });
+    res.status(200).json({ resumen: resultado.rows[0].resumen });
+  } catch (error) {
+    res.status(404).json({ message: `${error}` });
+  }
+};
+const getBooks = async (req, res) => {
+  try {
+    const resultado = await pool.query("SELECT * from book");
+    res.json(resultado.rows);
   } catch (error) {
     res.json({ message: `${error}` });
   }
 };
-module.exports = { login, register, book, getBookResumeByTitle };
+module.exports = { login, register, book, getBookResumeByTitle, getBooks };
 //select * from information_schema.columns where table_name = 'nombre de la tabla';
