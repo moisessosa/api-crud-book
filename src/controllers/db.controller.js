@@ -1,5 +1,7 @@
 //const express = require("express");
 const { Pool } = require("pg");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const pool = new Pool({
@@ -36,6 +38,55 @@ const login = async (req, res) => {
   });
 };
 
+const loginO = async (req, res) => {
+  const { usuario, senha } = req.body;
+  const userExist = await pool.query(
+    "Select nombre from usuarios where nombre = $1",
+    [usuario]
+  );
+
+  console.log(userExist.rows);
+  if (userExist.rows.length == 0) {
+    return res.status(404).send("Usuario no existe");
+  }
+  const pass = await pool.query(
+    "SELECT password FROM usuarios WHERE nombre = $1",
+    [usuario]
+  );
+  console.log(pass.rows);
+  // if (pass.rows.length == 0) {
+  //   return res.json({
+  //     nombre: usuario,
+  //     auth: false,
+  //     message: "Contraseña Invalida",
+  //   });
+  // }
+  //console.log(respuesta.rows.length);
+  const checkPass = await bcrypt.compare(senha, pass.rows[0].password);
+  if (checkPass) {
+    const token = jwt.sign(
+      {
+        nombre: userExist.rows[0].nombre,
+        casa: "Brasil",
+      },
+      process.env.SECRET,
+      { expiresIn: 3600 }
+    );
+
+    res.json({
+      nombre: userExist.rows[0].nombre,
+      token: token,
+      message: "Contraseña valida",
+    });
+  } else {
+    return res.json({
+      nombre: usuario,
+      token: "invalido",
+      message: "Contraseña Invalida",
+    });
+  }
+};
+
 const register = async (req, res) => {
   const { usuario, senha } = req.body;
   if (usuario && senha) {
@@ -44,7 +95,7 @@ const register = async (req, res) => {
         "INSERT INTO usuarios (nombre, password) values ($1,  PGP_SYM_ENCRYPT($2,'AES_KEY'))",
         [usuario, senha]
       );
-      console.log(insertar.rows);
+
       res.status(201).json({ message: `Usuario ${usuario} Creados` });
     } catch (err) {
       res
@@ -56,11 +107,37 @@ const register = async (req, res) => {
       .status(403)
       .json({ message: "Datos incompleto o con formato incompleto" });
   }
-  console.log(usuario, senha);
+  //console.log(usuario, senha);
+  res.send("ok");
+};
+const registerO = async (req, res) => {
+  const { usuario, senha } = req.body;
+  if (usuario && senha) {
+    try {
+      const salt = await bcrypt.genSalt(12);
+      const senhaEnc = await bcrypt.hash(senha, salt);
+      const insertar = await pool.query(
+        "INSERT INTO usuarios (nombre, password) values ($1, $2)",
+        [usuario, senhaEnc]
+      );
+      console.log(insertar);
+      res.status(201).json({ message: `Usuario ${usuario} Creados` });
+    } catch (err) {
+      res
+        .status(500)
+        .json({ message: "ocurrio un erro al crear el usuario", error: err });
+    }
+  } else {
+    res
+      .status(403)
+      .json({ message: "Datos incompleto o con formato incompleto" });
+  }
+  //console.log(usuario, senha);
   res.send("ok");
 };
 const book = async (req, res) => {
   const { book_name, genero, precio, resumen } = req.body;
+
   if (book_name && genero && precio && resumen) {
     try {
       const insertar = pool.query(
@@ -100,5 +177,13 @@ const getBooks = async (req, res) => {
     res.json({ message: `${error}` });
   }
 };
-module.exports = { login, register, book, getBookResumeByTitle, getBooks };
+module.exports = {
+  login,
+  loginO,
+  register,
+  registerO,
+  book,
+  getBookResumeByTitle,
+  getBooks,
+};
 //select * from information_schema.columns where table_name = 'nombre de la tabla';
