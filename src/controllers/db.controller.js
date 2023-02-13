@@ -54,14 +54,7 @@ const loginO = async (req, res) => {
     [usuario]
   );
   console.log(pass.rows);
-  // if (pass.rows.length == 0) {
-  //   return res.json({
-  //     nombre: usuario,
-  //     auth: false,
-  //     message: "Contraseña Invalida",
-  //   });
-  // }
-  //console.log(respuesta.rows.length);
+
   const checkPass = await bcrypt.compare(senha, pass.rows[0].password);
   if (checkPass) {
     const token = jwt.sign(
